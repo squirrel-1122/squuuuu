@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寵物緊急協助</title>
+    <style>
+        /* ---------------- 基本樣式 ---------------- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* ---------------- 主容器 ---------------- */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            padding: 24px 30px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        /* ---------------- 輸入區域 ---------------- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.5;
+            box-sizing: border-box; /* 確保 padding 不會撐爆寬度 */
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+
+        button:not(:disabled):hover {
+            background-color: #0056b3;
+        }
+
+        /* ---------------- 載入中動畫 ---------------- */
+        .loader {
+            display: none; /* 預設隱藏 */
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ---------------- 結果顯示區域 ---------------- */
+        #results {
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .result-card {
+            display: none; /* 預設隱藏 */
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 15px;
+        }
+
+        .result-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        #advice-display {
+            line-height: 1.6;
+        }
+
+        #map-link {
+            display: block; /* 讓它可以被隱藏/顯示 */
+            margin-top: 15px;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            background-color: #28a745;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        #map-link:hover {
+            background-color: #218838;
+        }
+
+        /* 錯誤訊息 */
+        #error-message {
+            display: none;
+            color: #D8000C;
+            background-color: #FFD2D2;
+            border: 1px solid #D8000C;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>寵物緊急協助 AI</h1>
+        
+        <div class="form-group">
+            <label for="question-input">您的寵物發生了什麼事？</label>
+            <textarea id="question-input" rows="4" placeholder="例如：我的狗狗剛剛被車撞到，腿在流血..."></textarea>
+        </div>
+        
+        <button id="submit-btn">取得協助</button>
+
+        <div class="loader" id="loader"></div>
+        
+        <div id="error-message"></div>
+
+        <div id="results">
+            <div class="result-card" id="advice-card">
+                <h3>💡 AI 處理建議</h3>
+                <p id="advice-display"></p>
+                <a id="map-link" href="#" target="_blank" style="display: none;">開啟地圖，前往最近的醫院</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // -----------------------------------------------------
+        // JavaScript 邏輯
+        // -----------------------------------------------------
+
+        // 獲取頁面上的元件
+        const submitBtn = document.getElementById('submit-btn');
+        const questionInput = document.getElementById('question-input');
+        const loader = document.getElementById('loader');
+        const adviceCard = document.getElementById('advice-card');
+        const adviceDisplay = document.getElementById('advice-display');
+        const mapLink = document.getElementById('map-link');
+        const errorMessage = document.getElementById('error-message');
+
+        // ⭐️ Vercel API URL (使用相對路徑) ⭐️
+        const API_URL = '/api/get-help'; 
+
+        // 綁定按鈕點擊事件
+        submitBtn.addEventListener('click', handleGetHelp);
+
+        async function handleGetHelp() {
+            // 0. 重置介面
+            setLoading(true);
+            adviceCard.style.display = 'none';
+            mapLink.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            // 1. 獲取使用者的問題
+            const question = questionInput.value;
+            if (!question.trim()) {
+                showError("請先輸入您的情況。");
+                return;
+            }
+
+            try {
+                // 2. 獲取 GPS 位置
+                console.log("正在獲取 GPS 位置...");
+                const position = await getGpsPosition();
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                console.log(`GPS 位置: ${lat}, ${lng}`);
+
+                // 3. 發送資料到您的「後端」API
+                console.log("正在呼叫 Vercel API...");
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, lat, lng })
+                });
+
+                if (!response.ok) {
+                    // 如果 API 回傳錯誤 (例如 500)
+                    throw new Error(`API 錯誤: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json(); // data = { advice: "...", mapUrl: "..." }
+                console.log("收到 AI 回應:", data);
+
+                // 4. 在網頁上顯示結果
+                adviceDisplay.innerText = data.advice;
+                mapLink.href = data.mapUrl;
+                
+                adviceCard.style.display = 'block';
+                mapLink.style.display = 'block';
+
+            } catch (error) {
+                // 5. 處理所有可能的錯誤
+                console.error("處理失敗:", error);
+                if (error.code === 1) { // 錯誤代碼 1: 使用者拒絕 GPS
+                    showError("無法取得您的 GPS 位置。請允許瀏覽器存取您的位置。");
+                } else {
+                    showError(`發生錯誤：${error.message}`);
+                }
+            } finally {
+                // 6. 隱藏載入中
+                setLoading(false);
+            }
+        }
+
+        // 輔助功能：獲取 GPS (使用 Promise 簡化)
+        function getGpsPosition() {
+            return new Promise((resolve, reject) => {
+                // 檢查瀏覽器是否支援
+                if (!navigator.geolocation) {
+                    reject(new Error("您的瀏覽器不支援 GPS 定位。"));
+                    return;
+                }
+                // 獲取目前位置
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+            });
+        }
+
+        // 輔助功能：控制載入中動畫
+        function setLoading(isLoading) {
+            if (isLoading) {
+                loader.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.innerText = '處理中...';
+            } else {
+                loader.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.innerText = '取得協助';
+            }
+        }
+
+        // 輔助功能：顯示錯誤訊息
+        function showError(message) {
+            errorMessage.innerText = message;
+            errorMessage.style.display = 'block';
+            setLoading(false); // 發生錯誤時停止載入
+        }
+
+    </script>
+
+</body>
+</html>

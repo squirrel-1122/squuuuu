@@ -1,0 +1,12 @@
+{
+  "name": "pet-help-backend",
+  "version": "1.0.0",
+  "description": "Gemini Pet Help API on Vercel",
+  "main": "api/get-help.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google/genai": "^2.1.0"
+  }
+}
