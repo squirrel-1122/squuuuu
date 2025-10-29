@@ -4,13 +4,10 @@
 const { GoogleGenAI } = require('@google/genai');
 
 // --- Gemini 設定 ---
-
-// 1. (重大修正!) 將 process.env.GEMINI_API_KEY 放入 { apiKey: ... } 物件中
+// 1. 使用您在 Vercel 環境變數中設定的金鑰
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- Serverless Function 主程式 ---
-// (以下程式碼完全正確，無需更動)
-
 export default async function handler(req, res) {
   
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,11 +45,12 @@ export default async function handler(req, res) {
       }
     `;
 
-    // 7. 呼叫 Gemini API (這個語法是正確的)
+    // 7. 呼叫 Gemini API
     console.log("Vercel Function: 正在呼叫 Gemini...");
     
+    // 8. (重大修正!) 將模型降級為最廣泛支援的 'gemini-1.0-pro'
     const result = await genAI.models.generateContent({
-      model: "gemini-1.5-flash", // 指定模型
+      model: "gemini-1.0-pro", // 換成這個模型
       contents: [{ parts: [{ text: prompt }] }], // 傳遞提示
       generationConfig: {
         responseMimeType: "application/json" // 強制 JSON 輸出
@@ -64,7 +62,7 @@ export default async function handler(req, res) {
 
     console.log("Vercel Function: Gemini 回應:", jsonText);
 
-    // 8. 將 Gemini 的 JSON 回應傳回給前端
+    // 9. 將 Gemini 的 JSON 回應傳回給前端
     res.setHeader('Content-Type', 'application/json');
     return res.status(200).send(jsonText);
 
@@ -73,4 +71,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "AI 回應時發生錯誤。" });
   }
 }
-
