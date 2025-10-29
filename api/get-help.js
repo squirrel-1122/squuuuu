@@ -1,18 +1,18 @@
 // /api/get-help.js
-// 這是 Vercel Serverless Function
+// 這是一個 Vercel Serverless Function
 
-// 1. 載入最新的 @google/genai 套件
 const { GoogleGenAI } = require('@google/genai');
 
 // --- Gemini 設定 ---
-// 2. 初始化客戶端 (Client)
-// (我們不再在這裡定義 'model'，因為 'getGenerativeModel' 函數不存在)
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+
+// 1. (重大修正!) 將 process.env.GEMINI_API_KEY 放入 { apiKey: ... } 物件中
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- Serverless Function 主程式 ---
+// (以下程式碼完全正確，無需更動)
+
 export default async function handler(req, res) {
   
-  // (CORS 和請求方法檢查 - 保持不變)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -48,13 +48,12 @@ export default async function handler(req, res) {
       }
     `;
 
-    // 7. (重大更新!) 呼叫 Gemini API
-    // 我們改用 genAI.models.generateContent 語法，並在這裡傳入模型和提示
+    // 7. 呼叫 Gemini API (這個語法是正確的)
     console.log("Vercel Function: 正在呼叫 Gemini...");
     
     const result = await genAI.models.generateContent({
       model: "gemini-1.5-flash", // 指定模型
-      contents: [{ parts: [{ text: prompt }] }], // 傳遞提示 (使用新的 'contents' 結構)
+      contents: [{ parts: [{ text: prompt }] }], // 傳遞提示
       generationConfig: {
         responseMimeType: "application/json" // 強制 JSON 輸出
       }
