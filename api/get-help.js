@@ -1,36 +1,24 @@
 // /api/get-help.js
-// 這是一個 Vercel Serverless Function
+// 這是 Vercel Serverless Function
 
-// 1. (更新!) 載入最新的 @google/genai 套件
+// 1. 載入最新的 @google/genai 套件
 const { GoogleGenAI } = require('@google/genai');
 
 // --- Gemini 設定 ---
-// Vercel 會自動從您網站的「環境變數」設定中讀取 GEMINI_API_KEY
-// 2. (更新!) 使用 GoogleGenAI (而不是舊的 GoogleGenerativeAI)
+// 2. 初始化客戶端 (Client)
+// (我們不再在這裡定義 'model'，因為 'getGenerativeModel' 函數不存在)
 const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash", // 我們使用這個經過驗證的名稱
-  generationConfig: {
-    responseMimeType: "application/json" // 強制 Gemini 回傳 JSON
-  }
-});
-
 // --- Serverless Function 主程式 ---
-// Vercel 會自動將 /api/get-help 的請求導向到這個 handler
 export default async function handler(req, res) {
   
-  // 1. 設定 CORS 標頭 (允許您的前端網站呼叫此 API)
-  res.setHeader('Access-Control-Allow-Origin', '*'); // '*' 表示允許任何來源
+  // (CORS 和請求方法檢查 - 保持不變)
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // 2. 處理 CORS "pre-flight" OPTIONS 請求 (瀏覽器會自動發送)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
-  // 3. 只允許 POST 請求
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
@@ -56,13 +44,22 @@ export default async function handler(req, res) {
       請嚴格依照以下的 JSON 格式回覆，不要有任何多餘的文字：
       {
         "advice": "(string) 根據使用者的情況，提供簡短、冷靜的應對建議。",
-        "mapUrl": "(string) 根據使用D'情況和 GPS 位置，生成一個 Google Maps 的「搜尋」URL，幫他們尋找附近最適合的地點（例如：'動物醫院' 或 '24小時獸醫'）。"
+        "mapUrl": "(string) 根據使用者的情況和 GPS 位置，生成一個 Google Maps 的「搜尋」URL，幫他們尋找附近最適合的地點（例如：'動物醫院' 或 '24小時獸醫'）。"
       }
     `;
 
-    // 7. 呼叫 Gemini API
+    // 7. (重大更新!) 呼叫 Gemini API
+    // 我們改用 genAI.models.generateContent 語法，並在這裡傳入模型和提示
     console.log("Vercel Function: 正在呼叫 Gemini...");
-    const result = await model.generateContent(prompt);
+    
+    const result = await genAI.models.generateContent({
+      model: "gemini-1.5-flash", // 指定模型
+      contents: [{ parts: [{ text: prompt }] }], // 傳遞提示 (使用新的 'contents' 結構)
+      generationConfig: {
+        responseMimeType: "application/json" // 強制 JSON 輸出
+      }
+    });
+
     const response = await result.response;
     const jsonText = response.text();
 
